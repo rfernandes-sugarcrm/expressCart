@@ -1,0 +1,45 @@
+  <form id="mypaygateway-form" action='/mypaygateway/checkout_action' method='POST'>
+  <div class="row">
+      <div class="col-sm-12 col-md-12">
+          <div class="form-group">
+              <label>Name on Card</label>
+              <input type="text" class="form-control paymentDetails" id="nameCard" name="nameCard" placeholder="Name on Card" value="{{@root.session.customerFirstname}} {{@root.session.customerLastname}}" required>
+          </div>
+      </div>
+      <div class="col-sm-8 col-md-8">
+          <div class="form-group">
+              <label>Card Number</label>
+              <input type="text" class="form-control paymentDetails" id="cardNum" name="cardNum" minlength="5" placeholder="4242-4242-4242-4242" required>
+          </div>
+      </div>
+      <div class="col-sm-4 col-md-4">
+          <div class="form-group icon-container">
+              <input type="hidden" id="brand" name="brand" value="visa" />
+              <i class="fa fa-cc-visa" style="color:navy;"></i>
+              <i class="fa fa-cc-amex" style="color:blue;opacity:0.3"></i>
+              <i class="fa fa-cc-mastercard" disabled style="color:red;opacity:0.3"></i>
+              <i class="fa fa-cc-discover" disabled style="color:orange;opacity:0.3"></i>
+          </div>
+      </div>
+      <div class="col-sm-6 col-md-6">
+          <div class="form-group">
+              <label>Month/Year</label>
+              <input type="text" class="form-control paymentDetails" id="monYear" name="monYear" placeholder="MM/YY" >
+          </div>
+      </div>
+      <div class="col-sm-6 col-md-6">
+          <div class="form-group">
+              <label>CCV</label>
+              <input type="text" class="form-control paymentDetails" id="ccv" name="ccv" placeholder="CCV"  required>
+          </div>
+      </div>
+      <div class="col-sm-6 col-md-6"></div>
+      <div class="col-sm-6 col-md-6">
+        <button id="mypaygatewaySubmit" class="btn btn-outline-success mt-2">
+            <div class="spinner-border d-none" id="spinner"></div>
+            <span id="button-text">Process Payment</span>
+        </button>
+      </div>
+
+  </div>
+</form>

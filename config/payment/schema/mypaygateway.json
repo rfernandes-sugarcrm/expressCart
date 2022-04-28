@@ -1,0 +1,28 @@
+{
+    "properties": {
+        "brand": {
+            "type": "string",
+            "enum": ["visa", "amex", "mastercard", "discover"]
+        },
+        "ccnum": {
+            "type": "string"
+        },
+        "expmonth": {
+            "type": "string"
+        },
+        "expyear": {
+            "type": "string"
+        },
+        "cvv": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "brand",
+        "ccnum",
+        "expmonth",
+        "expyear",
+        "cvv"
+    ],
+    "additionalProperties": false
+}

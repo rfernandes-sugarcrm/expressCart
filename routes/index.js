@@ -6,6 +6,7 @@ const moment = require('moment');
 const fs = require('fs');
 const path = require('path');
 const _ = require('lodash');
+const axios = require('axios');
 const ObjectId = require('mongodb').ObjectID;
 const {
     getId,
@@ -172,6 +173,10 @@ router.get('/checkout/information', async (req, res, next) => {
     if(req.session.cartSubscription){
         paymentType = '_subscription';
     }
+    // retrieve client's IP
+    // req.session.ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const {data} = await axios.get('https://checkip.amazonaws.com/');
+    req.session.ip = data.trim();
 
     // render the payment page
     res.render(`${config.themeViews}checkout-information`, {

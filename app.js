@@ -20,6 +20,7 @@ const { getConfig, getPaymentConfig, updateConfigLocal } = require('./lib/config
 const { runIndexing } = require('./lib/indexing');
 const { addSchemas } = require('./lib/schema');
 const { initDb, getDbUri } = require('./lib/db');
+const { initSugar } = require('./lib/sugar');
 const { writeGoogleData } = require('./lib/googledata');
 let handlebars = require('express-handlebars');
 const i18n = require('i18n');
@@ -248,7 +249,7 @@ handlebars = handlebars.create({
             if(status === 'Paid'){
                 return '<h2 class="text-success">Your payment has been successfully processed</h2>';
             }
-            if(status === 'Pending'){
+            if(status === 'Pending' || status === 'Processing'){
                 const paymentConfig = getPaymentConfig();
                 if(config.paymentGateway === 'instore'){
                     return `<h2 class="text-warning">${paymentConfig.resultMessage}</h2>`;
@@ -535,6 +536,7 @@ initDb(config.databaseConnectionString, async (err, db) => {
 
     // Start the app
     try{
+        initSugar();
         await app.listen(app.get('port'));
         app.emit('appStarted');
         if(process.env.NODE_ENV !== 'test'){

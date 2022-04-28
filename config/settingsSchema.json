@@ -78,6 +78,10 @@
                     },
                     {
                         "type": "string",
+                        "enum": [ "mypaygateway"]
+                    },
+                    {
+                        "type": "string",
                         "enum": [ "blockonomics"]
                     },
                     {

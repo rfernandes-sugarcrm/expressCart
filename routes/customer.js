@@ -3,6 +3,8 @@ const router = express.Router();
 const colors = require('colors');
 const randtoken = require('rand-token');
 const bcrypt = require('bcryptjs');
+const { post2Sugar } = require('../lib/sugar');
+
 const {
     getId,
     clearSessionValue,
@@ -26,6 +28,14 @@ const apiLimiter = rateLimit({
 router.post('/customer/create', async (req, res) => {
     const db = req.app.db;
 
+    // check for existing customer
+    let customer = await db.customers.findOne({ email: req.body.email });
+    if(customer) {
+        return res.status(400).json({
+            message: 'A customer already exists with that email address'
+        });
+    }
+
     const customerObj = {
         email: sanitize(req.body.email),
         company: sanitize(req.body.company),
@@ -35,53 +45,91 @@ router.post('/customer/create', async (req, res) => {
         address2: sanitize(req.body.address2),
         country: sanitize(req.body.country),
         state: sanitize(req.body.state),
+        ip: sanitize(req.body.ip),
         postcode: sanitize(req.body.postcode),
         phone: sanitize(req.body.phone),
         password: bcrypt.hashSync(req.body.password, 10),
-        created: new Date()
+        created: new Date(),
+        active: 0
     };
 
     const schemaResult = validateJson('newCustomer', customerObj);
     if(!schemaResult.result){
-        res.status(400).json(schemaResult.errors);
-        return;
+        return res.status(400).json(schemaResult.errors);
     }
 
-    // check for existing customer
-    const customer = await db.customers.findOne({ email: req.body.email });
-    if(customer){
-        res.status(400).json({
-            message: 'A customer already exists with that email address'
+    try {
+        customer = await db.customers.insertOne(customerObj);
+        indexCustomers(req.app);
+    } catch(ex){
+        console.error(colors.red('Failed to insert customer: ', ex));
+        return res.status(400).json({
+            message: 'Customer creation failed.'
         });
-        return;
     }
+
+    // Return the new customer
+    const customerReturn = customer.ops[0];
+    delete customerReturn.password;
+    
+    //communicate with sugar
+    try {
+        const signup = {
+            first_name: customerObj.firstName,
+            last_name: customerObj.lastName,
+            ecomm_email: customerObj.email,
+            ip_address: customerObj.ip,
+            primary_address_street: customerObj.address1,
+            primary_address_state: customerObj.state,
+            primary_address_city: customerObj.address2,
+            primary_address_postalcode: customerObj.postcode,
+            primary_address_country: customerObj.country,
+            phone_mobile: customerObj.phone,
+            sync_key: customerReturn._id.toString()
+        };
+
+        const {data} = await post2Sugar('/FraudDetection/EComm/signup', signup);
+        if(data.outcome != 'approved') {
+            console.error(colors.red('Fraud Detected ', data));
+            return res.status(400).json({
+                message: 'We cannot proceed with your checkout. Our team will review your account and contact you.'
+            });
+        }
+    } catch(ex){
+        console.error(colors.red('Failed to insert customer: ', ex));
+        return res.status(400).json({
+            message: 'Customer creation failed.'
+        });
+    }
+
     // email is ok to be used.
     try{
-        const newCustomer = await db.customers.insertOne(customerObj);
-        indexCustomers(req.app)
-        .then(() => {
-            // Return the new customer
-            const customerReturn = newCustomer.ops[0];
-            delete customerReturn.password;
-
-            // Set the customer into the session
-            req.session.customerPresent = true;
-            req.session.customerId = customerReturn._id;
-            req.session.customerEmail = customerReturn.email;
-            req.session.customerCompany = customerReturn.company;
-            req.session.customerFirstname = customerReturn.firstName;
-            req.session.customerLastname = customerReturn.lastName;
-            req.session.customerAddress1 = customerReturn.address1;
-            req.session.customerAddress2 = customerReturn.address2;
-            req.session.customerCountry = customerReturn.country;
-            req.session.customerState = customerReturn.state;
-            req.session.customerPostcode = customerReturn.postcode;
-            req.session.customerPhone = customerReturn.phone;
-            req.session.orderComment = req.body.orderComment;
-
-            // Return customer oject
-            res.status(200).json(customerReturn);
+        await db.customers.updateOne({
+            email: req.body.email
+        }, {
+            $set: {
+                active: 1
+            }
         });
+
+        // Set the customer into the session
+        req.session.customerPresent = true;
+        req.session.customerId = customerReturn._id;
+        req.session.customerIp = customerReturn.ip_address;
+        req.session.customerEmail = customerReturn.email;
+        req.session.customerCompany = customerReturn.company;
+        req.session.customerFirstname = customerReturn.firstName;
+        req.session.customerLastname = customerReturn.lastName;
+        req.session.customerAddress1 = customerReturn.address1;
+        req.session.customerAddress2 = customerReturn.address2;
+        req.session.customerCountry = customerReturn.country;
+        req.session.customerState = customerReturn.state;
+        req.session.customerPostcode = customerReturn.postcode;
+        req.session.customerPhone = customerReturn.phone;
+        req.session.orderComment = req.body.orderComment;
+
+        // Return customer oject
+        res.status(200).json(customerReturn);
     }catch(ex){
         console.error(colors.red('Failed to insert customer: ', ex));
         res.status(400).json({
@@ -445,10 +493,9 @@ router.post('/customer/login_action', async (req, res) => {
     const customer = await db.customers.findOne({ email: mongoSanitize(req.body.loginEmail) });
     // check if customer exists with that email
     if(customer === undefined || customer === null){
-        res.status(400).json({
-            message: 'A customer with that email does not exist.'
+        return res.status(400).json({
+            message: 'Access denied (0). Check email/password and try again.'
         });
-        return;
     }
     // we have a customer under that email so we compare the password
     bcrypt.compare(req.body.loginPassword, customer.password)
@@ -456,9 +503,16 @@ router.post('/customer/login_action', async (req, res) => {
         if(!result){
             // password is not correct
             res.status(400).json({
-                message: 'Access denied. Check password and try again.'
+                message: 'Access denied (1). Check email/password and try again.'
             });
             return;
+        }
+
+        if(customer.active != 1) {
+            // password is not correct
+            return res.status(400).json({
+                message: 'Access denied (2). Check email/password and try again.'
+            });
         }
 
         // Customer login successful
@@ -486,6 +540,31 @@ router.post('/customer/login_action', async (req, res) => {
         });
     });
 });
+
+// login the customer and check the password
+router.put('/customer/signup_webhook', async (req, res) => {
+    const db = req.app.db;
+    const body = req.body.data;
+
+    const customer = await db.customers.findOne({ email: mongoSanitize(body.ecomm_email) });
+    // check if customer exists with that email
+    if(customer === undefined || customer === null) {
+        return res.status(400).json({
+            message: 'Access denied (0). Check email/password and try again.'
+        });
+    }
+
+    const active = body.status == 'approved' ? 1 : 0;
+
+    await db.customers.updateOne({
+        _id: getId(body.sync_key)
+    }, {
+        $set: {
+            active
+        }
+    });
+});
+
 
 // customer forgotten password
 router.get('/customer/forgotten', (req, res) => {

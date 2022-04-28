@@ -1,10 +1,15 @@
 <div class="row">
-    <div class="col-sm-12 col-md-12">
+    <div class="col-sm-6 col-md-6">
         <div class="form-group">
             <input type="email" class="form-control customerDetails" id="shipEmail" name="shipEmail" minlength="5" placeholder="Email address" value="{{@root.session.customerEmail}}" required>
             <div class="invalid-feedback">
                 Please enter a valid email address
             </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-md-6">
+        <div class="form-group">
+            <input type="text" class="form-control customerDetails" id="shipIp" name="shipIp" placeholder="IP Address" value="{{@root.session.ip}}" readonly>
         </div>
     </div>
     <div class="col-sm-12 col-md-12">
@@ -29,17 +34,7 @@
     </div>
     <div class="col-sm-12 col-md-12">
         <div class="form-group">
-            <input type="text" class="form-control customerDetails" id="shipAddr2" name="shipAddr2" placeholder="Address 2 (optional)" value="{{@root.session.customerAddress2}}">
-        </div>
-    </div>
-    <div class="col-sm-12 col-md-12">
-        <div class="form-group">
-            <select class="form-control" id="shipCountry" name="shipCountry" required>
-                <option value="" disabled selected>Select Country</option>
-                {{#each countryList}}
-                <option {{selectState this @root.session.customerCountry}} value="{{this}}">{{this}}</option>
-                {{/each}}
-            </select>
+            <input type="text" class="form-control customerDetails" id="shipAddr2" name="shipAddr2" placeholder="City" value="{{@root.session.customerAddress2}}">
         </div>
     </div>
     <div class="col-sm-12 col-md-6">
@@ -50,6 +45,16 @@
     <div class="col-sm-12 col-md-6">
         <div class="form-group">
             <input type="text" class="form-control customerDetails" id="shipPostcode" name="shipPostcode" placeholder="Post code" value="{{@root.session.customerPostcode}}" required>
+        </div>
+    </div>
+    <div class="col-sm-12 col-md-12">
+        <div class="form-group">
+            <select class="form-control" id="shipCountry" name="shipCountry" required>
+                <option value="" disabled selected>Select Country</option>
+                {{#each countryList}}
+                <option {{selectState this @root.session.customerCountry}} value="{{this}}">{{this}}</option>
+                {{/each}}
+            </select>
         </div>
     </div>
     <div class="col-sm-12 col-md-12">
